@@ -1,0 +1,6 @@
+Types: deb
+URIs: https://motebus.github.io/medge-deb
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/medge-archive-keyring.gpg

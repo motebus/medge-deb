@@ -1,0 +1,92 @@
+name: Publish approved APT repository
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Approved medge-v<version> release tag
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: medge-apt-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate binary-only public tree
+        run: python3 scripts/publish_apt.py validate-tree .
+
+      - name: Install APT repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils gnupg
+
+      - name: Download approved release bundles
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          TAG="${EVENT_TAG:-${INPUT_TAG:-}}"
+          [[ "$TAG" =~ ^medge-v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]] \
+            || { echo "invalid release tag: $TAG" >&2; exit 1; }
+          mkdir -p release-input/current
+          gh release download "$TAG" --dir release-input/current
+          python3 scripts/publish_apt.py validate-bundle release-input/current
+          PREVIOUS_TAG="$(python3 scripts/publish_apt.py previous-tag release-input/current)"
+          printf 'CURRENT_TAG=%s\n' "$TAG" >> "$GITHUB_ENV"
+          printf 'PREVIOUS_TAG=%s\n' "$PREVIOUS_TAG" >> "$GITHUB_ENV"
+          if [ -n "$PREVIOUS_TAG" ]; then
+            mkdir -p release-input/previous
+            gh release download "$PREVIOUS_TAG" --dir release-input/previous
+            python3 scripts/publish_apt.py validate-bundle release-input/previous
+          fi
+
+      - name: Import protected archive key
+        env:
+          MEDGE_APT_SIGNING_KEY: ${{ secrets.MEDGE_APT_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$MEDGE_APT_SIGNING_KEY"
+          printf '%s' "$MEDGE_APT_SIGNING_KEY" | gpg --batch --import
+
+      - name: Build and sign APT repository
+        env:
+          MEDGE_APT_SIGNING_PASSPHRASE: ${{ secrets.MEDGE_APT_SIGNING_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          BUNDLES=(release-input/current)
+          if [ -n "$PREVIOUS_TAG" ]; then
+            BUNDLES+=(release-input/previous)
+          fi
+          python3 scripts/publish_apt.py build . apt-site "${BUNDLES[@]}"
+          test "$(du -sb apt-site | cut -f1)" -lt 1000000000
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apt-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy approved APT repository
+        id: deployment
+        uses: actions/deploy-pages@v4
