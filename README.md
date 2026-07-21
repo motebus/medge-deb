@@ -76,7 +76,7 @@ Each approved GitHub Release contains:
 - optional binary `.changes` and `.buildinfo` provenance.
 
 The `medge` package installs the exact coordinated versions of `sphered`,
-`mbridge`, `ss-webos`, `moted`, `agos`, `qbix-wasm`, `mote`, and `desk`.
+`mgate`, `ss-webos`, `moted`, `agos`, `qbix-wasm`, `mote`, and `desk`.
 
 Every stable publication requires explicit owner approval. Existing release
 tags and assets are immutable.

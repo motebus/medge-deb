@@ -17,7 +17,7 @@ import tempfile
 
 EXPECTED_PACKAGES = (
     "sphered",
-    "mbridge",
+    "mgate",
     "ss-webos",
     "moted",
     "agos",
@@ -29,6 +29,7 @@ HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 TAG_RE = re.compile(r"^medge-v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$")
 ALLOWED_ROOT_FILES = {
     ".gitignore",
+    "github-setup.sh",
     "LICENSE",
     "README.md",
     "medge-deb.env",
