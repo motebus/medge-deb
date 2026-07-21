@@ -45,6 +45,26 @@ architecture: amd64
 
 It does not require `apt-key`, `trusted=yes`, or a direct DEB URL.
 
+## GitHub Account Setup
+
+An owner can create or verify the public install repository and push this
+checkout's `main` branch with:
+
+```bash
+./github-setup.sh
+```
+
+The script interactively asks for the GitHub account or organization,
+repository name, and token. Token input is hidden and is not stored in the
+repository, remote URL, Git configuration, or a persistent credential helper.
+The token must be able to create or administer the target public repository
+and write repository contents. For an organization target, the account must
+also be allowed to create repositories in that organization.
+
+The script refuses a dirty worktree or a branch other than `main`, never
+force-pushes, and does not create a tag, GitHub Release, or stable APT
+publication.
+
 ## Releases
 
 Each approved GitHub Release contains:
