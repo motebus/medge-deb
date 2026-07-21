@@ -13,7 +13,7 @@ on GitLab.
 Download and inspect the public archive-key fingerprint:
 
 ```text
-A3F7 BCB2 E33F 5B09 AB19  5F73 1A0B 690F 0195 899E
+B04E EEA2 0DE6 63BD FE79  AB49 EF52 A067 2201 1216
 ```
 
 Install the key and repository definition:
