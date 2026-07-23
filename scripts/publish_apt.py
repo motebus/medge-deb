@@ -31,6 +31,7 @@ TAG_RE = re.compile(r"^medge-v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$")
 ALLOWED_ROOT_FILES = {
     ".gitignore",
     "github-setup.sh",
+    "install.sh",
     "LICENSE",
     "README.md",
     "medge-deb.env",
@@ -216,6 +217,25 @@ def validate_tree(root: Path) -> None:
         f"fpr:::::::::{fingerprint}:" in public_keys,
         "public archive key does not match fingerprint",
     )
+    installer = root / "install.sh"
+    require(installer.is_file(), "public repository is missing install.sh")
+    require(installer.stat().st_mode & 0o111 != 0, "install.sh must be executable")
+    run("sh", "-n", str(installer))
+    installer_text = installer.read_text(encoding="utf-8")
+    for required_text in (
+        "https://motebus.github.io/medge-deb",
+        fingerprint,
+        "apt-get install -y medge",
+    ):
+        require(
+            required_text in installer_text,
+            f"install.sh is missing required contract: {required_text}",
+        )
+    for forbidden_text in ("apt-key", "trusted=yes"):
+        require(
+            forbidden_text not in installer_text,
+            f"install.sh contains forbidden APT mode: {forbidden_text}",
+        )
 
 
 def copy_package(asset: Path, site: Path) -> None:
@@ -261,6 +281,7 @@ def write_index(site: Path, repository_root: Path, current_manifest: dict) -> No
 
     shutil.copy2(repository_root / "medge-archive-keyring.gpg", site)
     shutil.copy2(repository_root / "medge.sources", site)
+    shutil.copy2(repository_root / "install.sh", site)
     (site / ".nojekyll").write_text("", encoding="utf-8")
     fingerprint = archive_fingerprint(repository_root)
     index = f"""<!doctype html>
@@ -271,8 +292,9 @@ def write_index(site: Path, repository_root: Path, current_manifest: dict) -> No
 <p>Stable Ubuntu 24.04 amd64 binary packages.</p>
 <p>Current meta-package: <code>medge {current_manifest['medge_version']}</code></p>
 <p>Signing fingerprint: <code>{fingerprint}</code></p>
-<pre>sudo apt-get update
-sudo apt-get install medge</pre>
+<pre>curl -fsSLo /tmp/medge-install.sh \
+https://motebus.github.io/medge-deb/install.sh &amp;&amp;
+sudo sh /tmp/medge-install.sh</pre>
 </html>
 """
     (site / "index.html").write_text(index, encoding="utf-8")

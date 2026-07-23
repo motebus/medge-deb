@@ -10,29 +10,26 @@ on GitLab.
 
 ## Install
 
-Download and inspect the public archive-key fingerprint:
+Install MEdge on Ubuntu 24.04 amd64 with one command:
+
+```bash
+curl -fsSLo /tmp/medge-install.sh \
+  https://motebus.github.io/medge-deb/install.sh &&
+sudo sh /tmp/medge-install.sh
+```
+
+The public installer checks the operating system and architecture, verifies
+the downloaded archive key against this fingerprint, configures the signed
+APT source, and runs `apt-get install medge`:
 
 ```text
 AECA A1DC DAF1 9C7B 7FEA  F0C0 82A0 E180 EDAE A7A0
 ```
 
-Install the key and repository definition:
+To inspect it before installation:
 
 ```bash
-sudo install -d -m 0755 /etc/apt/keyrings
-
-curl -fsSLo /tmp/medge-archive-keyring.gpg \
-  https://motebus.github.io/medge-deb/medge-archive-keyring.gpg
-sudo install -m 0644 /tmp/medge-archive-keyring.gpg \
-  /etc/apt/keyrings/medge-archive-keyring.gpg
-
-curl -fsSLo /tmp/medge.sources \
-  https://motebus.github.io/medge-deb/medge.sources
-sudo install -m 0644 /tmp/medge.sources \
-  /etc/apt/sources.list.d/medge.sources
-
-sudo apt-get update
-sudo apt-get install medge
+curl -fsSL https://motebus.github.io/medge-deb/install.sh
 ```
 
 The repository uses:
@@ -43,7 +40,7 @@ component:    main
 architecture: amd64
 ```
 
-It does not require `apt-key`, `trusted=yes`, or a direct DEB URL.
+It does not use `apt-key`, `trusted=yes`, or a direct DEB URL.
 
 ## GitHub Account Setup
 
