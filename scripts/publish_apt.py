@@ -352,10 +352,12 @@ def build_site(repository_root: Path, site: Path, bundles: list[Path]) -> None:
     if site.exists():
         shutil.rmtree(site)
     site.mkdir(parents=True)
-    for bundle, manifest in zip(bundles, manifests, strict=True):
-        for package in manifest["packages"]:
-            copy_package(bundle / package["asset"], site)
-        copy_package(bundle / f"medge_{manifest['medge_version']}_all.deb", site)
+    for package in current["packages"]:
+        copy_package(bundles[0] / package["asset"], site)
+    copy_package(
+        bundles[0] / f"medge_{current['medge_version']}_all.deb",
+        site,
+    )
     write_index(site, repository_root, current)
     sign_release(site, repository_root)
 
