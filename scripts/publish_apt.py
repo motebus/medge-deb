@@ -26,6 +26,7 @@ EXPECTED_PACKAGES = (
     "desk",
 )
 HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
+FINGERPRINT_RE = re.compile(r"^[0-9A-F]{40}$")
 TAG_RE = re.compile(r"^medge-v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$")
 ALLOWED_ROOT_FILES = {
     ".gitignore",
@@ -79,6 +80,18 @@ def sha256(path: Path) -> str:
 
 def package_field(asset: Path, field: str) -> str:
     return run("dpkg-deb", "-f", str(asset), field, capture=True)
+
+
+def archive_fingerprint(repository_root: Path) -> str:
+    formatted = (
+        repository_root / "medge-archive-keyring.fingerprint"
+    ).read_text(encoding="utf-8")
+    fingerprint = "".join(formatted.split()).upper()
+    require(
+        FINGERPRINT_RE.fullmatch(fingerprint) is not None,
+        "invalid archive-key fingerprint",
+    )
+    return fingerprint
 
 
 def expected_depends(manifest: dict) -> str:
@@ -190,6 +203,19 @@ def validate_tree(root: Path) -> None:
         )
     ]
     require(tracked_forbidden == [], f"binary/source package leaked into Git tree: {tracked_forbidden}")
+    fingerprint = archive_fingerprint(root)
+    public_keys = run(
+        "gpg",
+        "--batch",
+        "--show-keys",
+        "--with-colons",
+        str(root / "medge-archive-keyring.gpg"),
+        capture=True,
+    )
+    require(
+        f"fpr:::::::::{fingerprint}:" in public_keys,
+        "public archive key does not match fingerprint",
+    )
 
 
 def copy_package(asset: Path, site: Path) -> None:
@@ -236,9 +262,7 @@ def write_index(site: Path, repository_root: Path, current_manifest: dict) -> No
     shutil.copy2(repository_root / "medge-archive-keyring.gpg", site)
     shutil.copy2(repository_root / "medge.sources", site)
     (site / ".nojekyll").write_text("", encoding="utf-8")
-    fingerprint = (repository_root / "medge-archive-keyring.fingerprint").read_text(
-        encoding="utf-8"
-    ).strip()
+    fingerprint = archive_fingerprint(repository_root)
     index = f"""<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -257,9 +281,7 @@ sudo apt-get install medge</pre>
 def sign_release(site: Path, repository_root: Path) -> None:
     passphrase = os.environ.get("MEDGE_APT_SIGNING_PASSPHRASE")
     require(passphrase is not None and passphrase != "", "signing passphrase is unavailable")
-    fingerprint = (repository_root / "medge-archive-keyring.fingerprint").read_text(
-        encoding="utf-8"
-    ).strip()
+    fingerprint = archive_fingerprint(repository_root)
     secret_keys = run("gpg", "--batch", "--with-colons", "--list-secret-keys", fingerprint, capture=True)
     require(f"fpr:::::::::{fingerprint}:" in secret_keys, "expected private signing key is unavailable")
     release = site / "dists/stable/Release"
