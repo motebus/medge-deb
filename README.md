@@ -43,11 +43,16 @@ architecture: amd64
 
 It does not use `apt-key`, `trusted=yes`, or a direct DEB URL.
 It does not create or modify MChat topology or service authorization policy.
+Before the package transaction, it stops and disables existing MEdge system
+units in reverse dependency order. It then enables, starts, and verifies each
+unit individually in dependency order, advancing only after that unit remains
+active.
 When exactly one local graphical session is active, it also reloads and
 starts the Desk and SS-WebOS user-session helpers. On a headless install,
 those helpers remain enabled and start at graphical login. If a system service
 fails its health check, the installer prints its status and recent journal,
-then stops and disables that unit so it does not remain in a restart loop.
+then stops, disables, and resets that unit so it does not remain in a failed
+state or restart loop.
 
 ## GitHub Account Setup
 

@@ -226,8 +226,13 @@ def validate_tree(root: Path) -> None:
         "https://motebus.github.io/medge-deb",
         fingerprint,
         "apt-get install -y medge",
-        "systemctl enable --now",
+        "STOP_SYSTEM_UNITS=",
+        'systemctl disable "$unit"',
+        'systemctl stop "$unit"',
+        'systemctl enable "$unit"',
+        'systemctl start "$unit"',
         "systemctl is-active --quiet",
+        'systemctl reset-failed "$failed_unit"',
     ):
         require(
             required_text in installer_text,
@@ -238,6 +243,7 @@ def validate_tree(root: Path) -> None:
         "trusted=yes",
         "/etc/hosts",
         "systemctl edit",
+        "systemctl enable --now",
         "MCHAT_",
     ):
         require(

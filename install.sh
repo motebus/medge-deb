@@ -13,6 +13,14 @@ moted.service
 agosd.service
 deskd.service
 "
+STOP_SYSTEM_UNITS="
+deskd.service
+agosd.service
+moted.service
+ss-webosd.service
+mgated.service
+sphered.service
+"
 DESKTOP_UNITS="
 deskd-session.service
 ss-webos-session.service
@@ -29,9 +37,10 @@ system_unit_failed() {
     systemctl --no-pager --full status "$failed_unit" >&2 || true
     printf '\n%s\n' "Recent journal for $failed_unit:" >&2
     journalctl --no-pager -n 50 -u "$failed_unit" >&2 || true
-    systemctl stop "$failed_unit" >/dev/null 2>&1 || true
     systemctl disable "$failed_unit" >/dev/null 2>&1 || true
-    fail "$failed_unit did not become healthy; it was stopped and disabled to prevent a restart loop"
+    systemctl stop "$failed_unit" >/dev/null 2>&1 || true
+    systemctl reset-failed "$failed_unit" >/dev/null 2>&1 || true
+    fail "$failed_unit did not become healthy; it was stopped, disabled, and reset to prevent a restart loop"
 }
 
 [ "$(id -u)" -eq 0 ] ||
@@ -48,6 +57,8 @@ command -v dpkg >/dev/null 2>&1 || fail "dpkg is unavailable"
     fail "amd64 architecture is required"
 [ -d /run/systemd/system ] ||
     fail "systemd must be running to start the MEdge services"
+command -v systemctl >/dev/null 2>&1 ||
+    fail "required runtime command is unavailable: systemctl"
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -103,6 +114,14 @@ install -m 0644 "$TEMP_DIR/medge-archive-keyring.gpg" "$KEYRING_PATH"
 install -m 0644 "$TEMP_DIR/medge.sources" "$SOURCES_PATH"
 
 apt-get update
+
+systemctl daemon-reload
+for unit in $STOP_SYSTEM_UNITS; do
+    systemctl disable "$unit" >/dev/null 2>&1 || true
+    systemctl stop "$unit" >/dev/null 2>&1 || true
+    systemctl reset-failed "$unit" 2>/dev/null || true
+done
+
 apt-get install -y medge
 
 for command_name in awk getent loginctl runuser systemctl; do
@@ -113,7 +132,12 @@ done
 systemctl daemon-reload
 for unit in $SYSTEM_UNITS; do
     systemctl reset-failed "$unit" 2>/dev/null || true
-    systemctl enable --now "$unit" ||
+    systemctl enable "$unit" ||
+        system_unit_failed "$unit"
+    systemctl start "$unit" ||
+        system_unit_failed "$unit"
+    sleep 2
+    systemctl is-active --quiet "$unit" ||
         system_unit_failed "$unit"
 done
 
