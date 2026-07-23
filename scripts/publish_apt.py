@@ -226,15 +226,23 @@ def validate_tree(root: Path) -> None:
         "https://motebus.github.io/medge-deb",
         fingerprint,
         "apt-get install -y medge",
+        "systemctl enable --now",
+        "systemctl is-active --quiet",
     ):
         require(
             required_text in installer_text,
             f"install.sh is missing required contract: {required_text}",
         )
-    for forbidden_text in ("apt-key", "trusted=yes"):
+    for forbidden_text in (
+        "apt-key",
+        "trusted=yes",
+        "/etc/hosts",
+        "systemctl edit",
+        "MCHAT_",
+    ):
         require(
             forbidden_text not in installer_text,
-            f"install.sh contains forbidden APT mode: {forbidden_text}",
+            f"install.sh contains forbidden content: {forbidden_text}",
         )
 
 

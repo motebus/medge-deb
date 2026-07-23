@@ -20,7 +20,8 @@ sudo sh /tmp/medge-install.sh
 
 The public installer checks the operating system and architecture, verifies
 the downloaded archive key against this fingerprint, configures the signed
-APT source, and runs `apt-get install medge`:
+APT source, runs `apt-get install medge`, starts the MEdge system services,
+and verifies that they are active:
 
 ```text
 AECA A1DC DAF1 9C7B 7FEA  F0C0 82A0 E180 EDAE A7A0
@@ -41,6 +42,10 @@ architecture: amd64
 ```
 
 It does not use `apt-key`, `trusted=yes`, or a direct DEB URL.
+It does not create or modify MChat topology or service authorization policy.
+When exactly one local graphical session is active, it also reloads and
+starts the Desk and SS-WebOS user-session helpers. On a headless install,
+those helpers remain enabled and start at graphical login.
 
 ## GitHub Account Setup
 
