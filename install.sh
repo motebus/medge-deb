@@ -23,6 +23,17 @@ fail() {
     exit 1
 }
 
+system_unit_failed() {
+    failed_unit="$1"
+    printf '\n%s\n' "Status for failed unit $failed_unit:" >&2
+    systemctl --no-pager --full status "$failed_unit" >&2 || true
+    printf '\n%s\n' "Recent journal for $failed_unit:" >&2
+    journalctl --no-pager -n 50 -u "$failed_unit" >&2 || true
+    systemctl stop "$failed_unit" >/dev/null 2>&1 || true
+    systemctl disable "$failed_unit" >/dev/null 2>&1 || true
+    fail "$failed_unit did not become healthy; it was stopped and disabled to prevent a restart loop"
+}
+
 [ "$(id -u)" -eq 0 ] ||
     fail "run this installer as root (for example: sudo sh /tmp/medge-install.sh)"
 
@@ -103,13 +114,13 @@ systemctl daemon-reload
 for unit in $SYSTEM_UNITS; do
     systemctl reset-failed "$unit" 2>/dev/null || true
     systemctl enable --now "$unit" ||
-        fail "$unit did not start; inspect it with: systemctl status $unit"
+        system_unit_failed "$unit"
 done
 
 sleep 2
 for unit in $SYSTEM_UNITS; do
     systemctl is-active --quiet "$unit" ||
-        fail "$unit is not active; inspect it with: systemctl status $unit"
+        system_unit_failed "$unit"
 done
 
 DESKTOP_SESSION=""
